@@ -1,0 +1,60 @@
+---
+# Uninstall Tailscale and remove from tailnet
+
+- name: Disconnect from tailnet
+  ansible.builtin.command:
+    cmd: tailscale down
+  changed_when: true
+  failed_when: false
+
+- name: Logout from tailnet
+  ansible.builtin.command:
+    cmd: tailscale logout
+  changed_when: true
+  failed_when: false
+
+- name: Stop and disable tailscaled
+  ansible.builtin.systemd:
+    name: tailscaled
+    enabled: false
+    state: stopped
+  failed_when: false
+
+# ---- Debian / Ubuntu ----
+
+- name: Remove Tailscale package (Debian)
+  ansible.builtin.apt:
+    name: tailscale
+    state: absent
+    purge: true
+  when: ansible_os_family == 'Debian'
+
+- name: Remove Tailscale apt repository (Debian)
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg]
+      https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}
+      {{ ansible_distribution_release }} main
+    filename: tailscale
+    state: absent
+  when: ansible_os_family == 'Debian'
+
+- name: Remove Tailscale GPG key (Debian)
+  ansible.builtin.file:
+    path: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    state: absent
+  when: ansible_os_family == 'Debian'
+
+# ---- RHEL / Fedora ----
+
+- name: Remove Tailscale package (RedHat)
+  ansible.builtin.dnf:
+    name: tailscale
+    state: absent
+  when: ansible_os_family == 'RedHat'
+
+- name: Remove Tailscale yum repository (RedHat)
+  ansible.builtin.yum_repository:
+    name: tailscale-stable
+    state: absent
+  when: ansible_os_family == 'RedHat'

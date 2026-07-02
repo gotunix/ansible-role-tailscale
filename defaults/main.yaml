@@ -1,0 +1,33 @@
+---
+# Tailscale role defaults
+
+# --- State control ---
+
+# Set to 'absent' to uninstall Tailscale and remove from tailnet
+tailscale_state: present
+
+# --- Authentication ---
+
+# Auth key for headless login — generate at:
+#   https://login.tailscale.com/admin/settings/keys
+# Use ansible-vault to encrypt this value.
+tailscale_authkey: ""
+
+# --- tailscale up options ---
+
+# Skip the 'tailscale up' step (install and configure only)
+tailscale_up_skip: false
+
+# Hostname to register in the tailnet
+tailscale_hostname: "{{ inventory_hostname }}"
+
+# Extra arguments passed to 'tailscale up'
+# Examples:
+#   "--ssh"                        enable Tailscale SSH
+#   "--advertise-exit-node"        offer as exit node
+#   "--accept-routes"              accept subnet routes
+#   "--advertise-tags=tag:server"  apply ACL tags
+tailscale_extra_args: ""
+
+# Force re-authentication even if already connected
+tailscale_force_reauth: false

@@ -1,0 +1,94 @@
+---
+# Connect to the tailnet
+# Supports two modes:
+#   1. Auth key (headless) — set tailscale_authkey
+#   2. Interactive — leave authkey empty, role displays the login URL
+
+- name: Check Tailscale connection status
+  ansible.builtin.command:
+    cmd: tailscale status --json
+  register: tailscale_status
+  changed_when: false
+  failed_when: false
+
+- name: Parse Tailscale status
+  ansible.builtin.set_fact:
+    tailscale_connected: >-
+      {{ (tailscale_status.rc == 0) and
+         ((tailscale_status.stdout | from_json).BackendState | default('') == 'Running') }}
+
+# --- Auth key mode (headless) ---
+
+- name: Connect to tailnet with auth key
+  ansible.builtin.command:
+    cmd: >-
+      tailscale up
+      --authkey={{ tailscale_authkey }}
+      --hostname={{ tailscale_hostname }}
+      {{ tailscale_extra_args }}
+  when:
+    - not tailscale_connected or tailscale_force_reauth
+    - tailscale_authkey | length > 0
+  changed_when: true
+  no_log: true
+
+# --- Interactive mode (display URL and wait) ---
+
+- name: Request login URL from Tailscale
+  ansible.builtin.command:
+    cmd: >-
+      tailscale login
+      --hostname={{ tailscale_hostname }}
+      {{ tailscale_extra_args }}
+  register: tailscale_login_output
+  changed_when: true
+  failed_when: false
+  async: 300
+  poll: 0
+  when:
+    - not tailscale_connected or tailscale_force_reauth
+    - tailscale_authkey | length == 0
+
+- name: Wait for login URL to be generated
+  ansible.builtin.pause:
+    seconds: 3
+  when:
+    - tailscale_login_output is not skipped
+
+- name: Get Tailscale login URL from status
+  ansible.builtin.command:
+    cmd: tailscale status --json
+  register: tailscale_url_check
+  changed_when: false
+  when:
+    - tailscale_login_output is not skipped
+
+- name: Display login URL
+  ansible.builtin.debug:
+    msg: |
+
+      ============================================
+        TAILSCALE AUTHENTICATION REQUIRED
+      ============================================
+
+      Open this URL in your browser to authenticate:
+
+      {{ (tailscale_url_check.stdout | from_json).AuthURL | default('URL not found — run `tailscale login` on the host manually') }}
+
+      Waiting up to 5 minutes for authentication...
+      ============================================
+  when:
+    - tailscale_url_check is not skipped
+
+- name: Wait for authentication to complete
+  ansible.builtin.command:
+    cmd: tailscale status --json
+  register: tailscale_wait_result
+  until: >-
+    (tailscale_wait_result.stdout | from_json).BackendState
+    | default('') == 'Running'
+  retries: 60
+  delay: 5
+  changed_when: false
+  when:
+    - tailscale_login_output is not skipped

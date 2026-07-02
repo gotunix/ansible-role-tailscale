@@ -1,0 +1,32 @@
+---
+# Tailscale role — task orchestrator
+
+- name: Uninstall Tailscale
+  ansible.builtin.include_tasks: uninstall.yaml
+  tags:
+    - tailscale
+    - uninstall
+  when: tailscale_state == 'absent'
+
+- name: Install Tailscale
+  ansible.builtin.include_tasks: install.yaml
+  tags:
+    - tailscale
+    - install
+  when: tailscale_state == 'present'
+
+- name: Configure Tailscale
+  ansible.builtin.include_tasks: configure.yaml
+  tags:
+    - tailscale
+    - configure
+  when: tailscale_state == 'present'
+
+- name: Connect to tailnet
+  ansible.builtin.include_tasks: connect.yaml
+  tags:
+    - tailscale
+    - connect
+  when:
+    - tailscale_state == 'present'
+    - not tailscale_up_skip

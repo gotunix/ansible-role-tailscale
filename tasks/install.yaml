@@ -1,0 +1,58 @@
+---
+# Install Tailscale from official repositories
+
+# ---- Debian / Ubuntu ----
+
+- name: Install prerequisites (Debian)
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+
+- name: Add Tailscale GPG key (Debian)
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}.noarmor.gpg"
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: "0644"
+  when: ansible_os_family == 'Debian'
+
+- name: Add Tailscale apt repository (Debian)
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg]
+      https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}
+      {{ ansible_distribution_release }} main
+    filename: tailscale
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Install Tailscale package (Debian)
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+
+# ---- RHEL / Fedora ----
+
+- name: Add Tailscale yum repository (RedHat)
+  ansible.builtin.yum_repository:
+    name: tailscale-stable
+    description: Tailscale stable
+    baseurl: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/$basearch"
+    gpgcheck: false
+    repo_gpgcheck: true
+    gpgkey: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ ansible_distribution_major_version }}/repo.gpg"
+    enabled: true
+  when: ansible_os_family == 'RedHat'
+
+- name: Install Tailscale package (RedHat)
+  ansible.builtin.dnf:
+    name: tailscale
+    state: present
+  when: ansible_os_family == 'RedHat'
